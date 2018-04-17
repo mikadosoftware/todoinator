@@ -1,4 +1,4 @@
-#!
+#! -*- coding:utf-8 -*-
 
 '''There is a story I like about PG Wodehouse, author of the Jeeves
 and Wooster novels.  He had an unusual method of editing his own work.
@@ -165,6 +165,9 @@ def parse_line(todoline):
     (' some note unadorned', 30)
     >>> parse_line(" some note {88}")
     (' some note ', 88)
+    >>> parse_line(" some note with non ascii ¥µ {88}")
+    (' some note with non ascii ¥µ ', 88)
+
     
     """
     rgx = re.compile(confd['todoinator.priorityregex'])
@@ -191,8 +194,8 @@ def parse_tree(rootpath):
         if suffix not in VALID_SUFFIX:
             continue
         try:
-
-            todo_list = parse_file(open(filepath).read())
+            #assume all files are utf-8???
+            todo_list = parse_file(open(filepath, encode='utf-8').read())
             res = sorted([TODO(line, filepath) for line in todo_list], key=lambda t: t.priority, reverse=True)
         except IOError:
             res = []
@@ -214,11 +217,6 @@ def parse_tree(rootpath):
     #webbrowser.open(path)
     print(textfrag)
 
-def main():
-    rootpath = '/home/pbrian/projects/weaver'
-    parse_tree(rootpath)
-    
-    
 if __name__ == '__main__':
     import doctest
     doctest.testmod(verbose=False)
