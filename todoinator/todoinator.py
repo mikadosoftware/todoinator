@@ -195,7 +195,7 @@ def parse_tree(rootpath):
             continue
         try:
             #assume all files are utf-8???
-            todo_list = parse_file(open(filepath, encode='utf-8').read())
+            todo_list = parse_file(open(filepath, encoding='utf-8').read())
             res = sorted([TODO(line, filepath) for line in todo_list], key=lambda t: t.priority, reverse=True)
         except IOError:
             res = []
