@@ -1,5 +1,3 @@
-{'<pkgname>': 'todoinator',
- '<rootdir>': '/home/pbrian/projects/todoinator2'}
 #! -*- coding:utf-8 -*-
 
 from setuptools import setup, find_packages
@@ -11,12 +9,10 @@ with open("VERSION") as fo:
 setup(
      name='todoinator',
      version=version,
-     description='ADescription to change',
+     description='A Description to change',
      author='author',
      packages=find_packages(exclude=('tests')),
      entry_points={
          'console_scripts': ['todoinator=todoinator.cmdline:main']
      }
 )
-
-
