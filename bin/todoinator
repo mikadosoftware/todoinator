@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #! -*- coding:utf-8 -*-
 
 from docopt import docopt
@@ -22,3 +23,6 @@ def run(args):
 def main():
     args = docopt(DOCOPT)
     run(args)
+
+if __name__ == '__main__':
+    main()

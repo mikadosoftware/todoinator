@@ -4,15 +4,13 @@ from setuptools import setup, find_packages
 
 # get version data
 with open("VERSION") as fo:
-    version = fo.read()
+    semver = fo.read()
 
 setup(
      name='todoinator',
-     version=version,
-     description='A Description to change',
-     author='author',
+     version=semver,
+     description='Extract todo info from code.',
+     author='Paul R. Brian <paul@mikadosoftware.com>',
      packages=find_packages(exclude=('tests')),
-     entry_points={
-         'console_scripts': ['todoinator=todoinator.cmdline:main']
-     }
+     scripts=['bin/todoinator']
 )
