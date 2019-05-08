@@ -68,10 +68,7 @@ Future enhancements:
 
 
 
-#TODO: build a test framework / runner {20}
-#TODO: build a lifecycle todo listing {99}
-#TODO: build a ticketing system??? at least a list of todos
-#TODO: linting etc - a pre-commit check system ala phabricator
+[ ]: build a test framework / runner
 
 
 '''
@@ -91,13 +88,17 @@ confd = {'todoinator.priorityregex': "\{\d+\}"}
 class TODO(object):
     """
     """
-    def __init__(self, line, filepath=None):
+    def __init__(self,
+                 isDone,
+                 todotxt,
+                 linenum,
+                 filepath):
         """
         """
-        parsedline, priority = parse_line(line)
-        self.line = parsedline
-        self.priority = priority
-        self.origpath = filepath
+        self.isDone = isDone
+        self.todotxt = todotxt
+        self.linenum = linenum
+        self.filepath = filepath
         try:
             absfilepath = os.path.abspath(filepath)
             bits = absfilepath.split("/")
@@ -106,6 +107,8 @@ class TODO(object):
         except ValueError: # cant find projects in path
             self.reponame = '?'
 
+    def __repr__(self):
+        return "[{}] {}".format("x" if self.isDone else " ", self.todotxt)
 
 def keep_file(filepath):
     """Decide if we keep the filepath, solely by exlcusion of end of path
@@ -140,23 +143,115 @@ def walk_tree(rootpath):
             thisfile = os.path.join(dirpath, file)
             yield thisfile
 
-def parse_file(txt):
-    """extract todo lines from a file
-
-    >>> parse_file("# todo: foo\\n foo")
-    [' foo']
-    
+def linenumber_lookup(linenumbers, filepos):
     """
-    res = []
-    for line in txt.split('\n'):
-        if line.strip().startswith('#'):
-            #valid possible
-            for token in ['todo:']:
-                stpoint = line.lower().find(token)
-                if stpoint >-1:
-                    res.append(line[stpoint+len(token):])
+    >>> linenumbers = [0, 4, 7, 9]
+    >>> linenumber_lookup(linenumbers, 3)
+    1
+    >>> linenumber_lookup(linenumbers, 8)
+    3
+    >>> linenumber_lookup(linenumbers, 33)
+    -1
+
+    """
+#    print("looking up", linenumbers, filepos)
+    foundlinenumber = -1
+    for idx, linestartpos in enumerate(linenumbers):
+        #[ ] handle last idx pos better here
+        try:
+            if filepos >= linestartpos and filepos <= linenumbers[idx+1]:
+                foundlinenumber = idx+1
+        except IndexError as e:
+            if filepos <= linestartpos:
+                foundlinenumber = idx
+            else:
+                foundlinenumber = -1
+                
+    return foundlinenumber
+
+
+def linenumber_creator(txt):
+    """
+    >>> txt = '''This
+    ... is
+    ... a
+    ... file'''
+    >>> linenumber_creator(txt)
+    [0, 4, 7, 9]
+
+    >>> linenumber_creator('')
+    []
+
+    """
+    linenumbers = []
+    for idx, val in enumerate(txt):
+        if val == '\n':
+            linenumbers.append(idx)
+    if linenumbers and linenumbers[0] != 0:
+        linenumbers.insert(0,0)
+    return linenumbers
+
+def parse_file(txt, filepath):
+    """Extract todo lines from a file
+
+    Rules
+
+    Item must be the first non-whitespace in a document
+    whitespace can include comment markers 
+    so ::
+
+        [ ] a todo
+        # [ ] another todo
+
+    both work
+    A todo marker can be ::
+
+        [ ] 
+        [X] 
+
+    >>> parse_file("#[ ] foo\\n foo", 'todo.txt')
+    [[ ] foo]
+
+    >>> testfile = '''
+    ... [ ] A todo item
+    ... [ ] A todo item 2
+    ... [x] a done item
+    ... #[x] done
+    ...  # [ ] todo
+    ... # not done [ ]'''
+    >>> todos = parse_file(testfile, '/tmp/todo.txt')
+    >>> for todo in todos:
+    ...     print(todo.isDone, todo.linenum)
+    False 1
+    False 2
+    True 3
+    True 4
+    False 5
     
-    return res
+
+
+    """
+    todos = []
+    linenumbers = linenumber_creator(txt)
+    
+    #StartLine:ZeroMoreSpaces:ZeroMoreHash:ZeroMoreSpaces:box
+    REGEX = '''^\s*\#*\s*(\[[\s|x]\].*)'''
+    flag = re.MULTILINE|re.IGNORECASE|re.UNICODE
+    pattern = re.compile(REGEX, flags=flag)
+
+    #matchiter = re.finditer(REGEX, txt, flags=flag)
+    matchiter = pattern.finditer(txt)
+    for match in matchiter:
+        goodline = match.groups()[0] # we wont match twice on same line??
+        done = False
+        if '[x]' in goodline.lower():
+            done = True
+        todo_txt = goodline.split(']')[1].strip()
+        _start = match.start()
+        linenum = linenumber_lookup(linenumbers, _start)
+        todos.append(TODO(done, todo_txt, linenum, filepath))
+    return(todos)
+    
 
 def parse_line(todoline):
     """extract data from a todo line
