@@ -81,7 +81,7 @@ import os
 import re
 import logging
 
-VALID_SUFFIX = ['.py', '.rst']
+VALID_SUFFIX = ['.py', '.rst', '.txt']
 ### config
 confd = {'todoinator.priorityregex': "\{\d+\}"} 
 
@@ -96,9 +96,16 @@ class TODO(object):
         """
         """
         self.isDone = isDone
+
         self.todotxt = todotxt
+        self.txt = self.todotxt
+
         self.linenum = linenum
+        self.line = self.linenum
+        
         self.filepath = filepath
+        # [ ] Need to think of something re: priority
+        self.priority = 1 
         try:
             absfilepath = os.path.abspath(filepath)
             bits = absfilepath.split("/")
@@ -218,7 +225,7 @@ def parse_file(txt, filepath):
     ... [x] a done item
     ... #[x] done
     ...  # [ ] todo
-    ... # not done [ ]'''
+    ... # not a todo!!! [ ]'''
     >>> todos = parse_file(testfile, '/tmp/todo.txt')
     >>> for todo in todos:
     ...     print(todo.isDone, todo.linenum)
@@ -278,6 +285,26 @@ def parse_line(todoline):
 
 def parse_tree(rootpath):
     """
+
+    >>> import shutil, os
+    >>> rootpath = '/tmp/todoinatortest'
+    >>> tgtfile = rootpath + '/foo.txt'
+    >>> shutil.rmtree(rootpath, True)
+    >>> os.makedirs(rootpath)
+    >>> txt = '''Hello
+    ... [ ] Correct Todo item
+    ... [x] DOne this
+    ... THis is just a line'''
+    >>> print(len(txt))
+    61
+    >>> open(tgtfile, 'w').write(txt)
+    61
+    >>> parse_tree(rootpath)
+    TODO
+    Correct Todo item [/tmp/todoinatortest/foo.txt (2)]
+    DOne this [/tmp/todoinatortest/foo.txt (3)]
+    <BLANKLINE>
+
     """
     all_todos = []
     textfrag = "TODO\n"
@@ -290,8 +317,9 @@ def parse_tree(rootpath):
             continue
         try:
             #assume all files are utf-8???
-            todo_list = parse_file(open(filepath, encoding='utf-8').read())
-            res = sorted([TODO(line, filepath) for line in todo_list], key=lambda t: t.priority, reverse=True)
+            todo_list = parse_file(open(filepath, encoding='utf-8').read(), filepath)
+            # [ ] We need a better sorting of todos across many files? Revert to priority???
+            res = sorted(todo_list, key=lambda t: t.filepath)
         except IOError:
             res = []
         except UnicodeDecodeError as e:
@@ -302,8 +330,12 @@ def parse_tree(rootpath):
 
     all_todos = sorted(all_todos, key=lambda t: t.priority, reverse=True)
     for todo in all_todos:
-        textfrag += "{0} {2} ({1})\n".format(todo.priority, todo.reponame, todo.line)
-        htmlfrag += "<tr><td>%s</td> <td>%s</td> <td>%s</td> </tr>\n" %  (todo.priority, todo.reponame, todo.line)
+        textfrag += "{0} [{1} ({2})]\n".format(todo.txt,
+                                             todo.filepath,
+                                             todo.linenum)
+        htmlfrag += "<tr><td>%s</td> <td>%s</td> <td>%s</td> </tr>\n" %  (todo.txt,
+                                                                          todo.filepath,
+                                                                          todo.linenum)
     htmlfrag += "</table>"
     #######################
     path = "/tmp/todo.html"
@@ -311,6 +343,7 @@ def parse_tree(rootpath):
     import webbrowser
     #webbrowser.open(path)
     print(textfrag)
+
 
 if __name__ == '__main__':
     import doctest
