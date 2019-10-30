@@ -20,12 +20,11 @@ and how the code is stored.
 
 So I intend to update and release my todo-inator idea.
 
-There are two parts - the rating of the code, by the author.  this will be a simple
-five star system ::
+There are two parts - the rating of the code, by the author.  this
+will be a simple five star system ::
 
    # rate: * * * * *
-   # lifecycle: <prototype/PoC>, <pre-release>, maturing, mature, retiring
-   # TODO:
+   # 
 
 And we can then see this rating in a specialised `ls`.
 
@@ -33,11 +32,35 @@ specialised ls - walk over a package source and tell me ::
 
    star rating
    todos
-   new features
+   (milestones) new features
 
-I think I will have a second system that correlates to a map of my todos and
-some external systems
-And some way of recording success / failures
+I think I will have a second system that correlates to a map of my
+todos and some external systems And some way of recording success /
+failures
+
+Rating
+------
+
+The star rating is more useful as an indicator of *tolerance* - how
+tolerant can the buiness-value-creation process be to the quality of
+this script.
+
+1* - it can be run by a developer, can fail gracelessly, and may give 95% results
+5* - utterly mission critical and runs lights out.
+
+As such we can see a discrepancy - this is of course all self
+assemessment but can be useful.  It allows us to focus discussion on
+the tolerance of the script during a review.  It gives momentum to
+reviews that can be ::
+
+    # rate: **
+    # tol: ***
+ 
+THis indicates a *risk* based approach to a release - if a reviewer
+has allowed this to go (and we can check it) we know we have a level
+of technical debt and a level of risk in the release.
+
+
 
 Design
 ------
@@ -69,7 +92,6 @@ Future enhancements:
 
 
 [ ]: build a test framework / runner
-
 
 '''
 
@@ -198,7 +220,61 @@ def linenumber_creator(txt):
         linenumbers.insert(0,0)
     return linenumbers
 
-def parse_file(txt, filepath):
+def base_file_parse(txt, filepath, regex, isMileStone=False):
+    """
+    """
+    if isMileStone:
+        DONETOKEN = '{x}'
+        RHS = '}'
+    else:
+        DONETOKEN = '[x]'
+        RHS = ']'
+    todos = []
+    linenumbers = linenumber_creator(txt)
+    
+    #StartLine:ZeroMoreSpaces:ZeroMoreHash:ZeroMoreSpaces:box
+    REGEX = regex 
+    flag = re.MULTILINE|re.IGNORECASE|re.UNICODE
+    pattern = re.compile(REGEX, flags=flag)
+
+    #matchiter = re.finditer(REGEX, txt, flags=flag)
+    matchiter = pattern.finditer(txt)
+    for match in matchiter:
+        goodline = match.groups()[0] # we wont match twice on same line??
+        done = False
+        if DONETOKEN in goodline.lower():
+            done = True
+        todo_txt = goodline.split(RHS)[1].strip()
+        _start = match.start()
+        linenum = linenumber_lookup(linenumbers, _start)
+        todos.append(TODO(done, todo_txt, linenum, filepath))
+    return(todos)
+
+def parse_file_miles(txt, filepath):
+    """ Extract milestone lines from a file
+
+    A Milestone is just like a Todo, but at a higher abstraction level 
+    (there can be many todos to any single milestone)
+
+    >>> testfile = '''
+    ... [ ] A todo item
+    ... [x] a done item
+    ... #[x] done
+    ... # not a todo!!! [ ]
+    ... { } A MileStone
+    ... {x} Completed Milestone
+    ... bad'''
+    >>> todos = parse_file_miles(testfile, '/tmp/todo.txt')
+    >>> for todo in todos:
+    ...     print(todo.isDone, todo.linenum)
+    False 5
+    True 6
+
+    """
+    regex = '''^\s*\#*\s*(\{[\s|x]\}.*)'''
+    return base_file_parse(txt, filepath, regex, isMileStone=True)
+    
+def parse_file_todos(txt, filepath):
     """Extract todo lines from a file
 
     Rules
@@ -216,7 +292,7 @@ def parse_file(txt, filepath):
         [ ] 
         [X] 
 
-    >>> parse_file("#[ ] foo\\n foo", 'todo.txt')
+    >>> parse_file_todos("#[ ] foo\\n foo", 'todo.txt')
     [[ ] foo]
 
     >>> testfile = '''
@@ -225,8 +301,9 @@ def parse_file(txt, filepath):
     ... [x] a done item
     ... #[x] done
     ...  # [ ] todo
-    ... # not a todo!!! [ ]'''
-    >>> todos = parse_file(testfile, '/tmp/todo.txt')
+    ... # not a todo!!! [ ]
+    ... { } A MileStone'''
+    >>> todos = parse_file_todos(testfile, '/tmp/todo.txt')
     >>> for todo in todos:
     ...     print(todo.isDone, todo.linenum)
     False 1
@@ -238,27 +315,8 @@ def parse_file(txt, filepath):
 
 
     """
-    todos = []
-    linenumbers = linenumber_creator(txt)
-    
-    #StartLine:ZeroMoreSpaces:ZeroMoreHash:ZeroMoreSpaces:box
-    REGEX = '''^\s*\#*\s*(\[[\s|x]\].*)'''
-    flag = re.MULTILINE|re.IGNORECASE|re.UNICODE
-    pattern = re.compile(REGEX, flags=flag)
-
-    #matchiter = re.finditer(REGEX, txt, flags=flag)
-    matchiter = pattern.finditer(txt)
-    for match in matchiter:
-        goodline = match.groups()[0] # we wont match twice on same line??
-        done = False
-        if '[x]' in goodline.lower():
-            done = True
-        todo_txt = goodline.split(']')[1].strip()
-        _start = match.start()
-        linenum = linenumber_lookup(linenumbers, _start)
-        todos.append(TODO(done, todo_txt, linenum, filepath))
-    return(todos)
-    
+    regex = '''^\s*\#*\s*(\[[\s|x]\].*)'''
+    return base_file_parse(txt, filepath, regex, isMileStone=False)
 
 def parse_line(todoline):
     """extract data from a todo line
@@ -317,7 +375,7 @@ def parse_tree(rootpath):
             continue
         try:
             #assume all files are utf-8???
-            todo_list = parse_file(open(filepath, encoding='utf-8').read(), filepath)
+            todo_list = parse_file_todos(open(filepath, encoding='utf-8').read(), filepath)
             # [ ] We need a better sorting of todos across many files? Revert to priority???
             res = sorted(todo_list, key=lambda t: t.filepath)
         except IOError:
@@ -341,7 +399,7 @@ def parse_tree(rootpath):
     path = "/tmp/todo.html"
     open(path, 'w').write(htmlfrag)
     import webbrowser
-    #webbrowser.open(path)
+    webbrowser.open(path)
     print(textfrag)
 
 
