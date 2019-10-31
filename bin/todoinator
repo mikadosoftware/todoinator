@@ -7,7 +7,7 @@ from todoinator import todoinator
 DOCOPT = """ todoinator
 
 Usage:
-    todoinator <rootpath>
+    todoinator <rootpath> [-m]
 
 Options:
     -h --help Show this
@@ -16,8 +16,8 @@ Options:
 """
 
 def run(args):
-    
-    todoinator.parse_tree(args['<rootpath>'])    
+    m = args['-m']
+    todoinator.parse_tree(args['<rootpath>'],milestonesonly=m)    
 
 
 def main():

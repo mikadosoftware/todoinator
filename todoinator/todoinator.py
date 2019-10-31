@@ -343,7 +343,7 @@ def parse_line(todoline):
     return todoline.replace(token, ""), priority
 
 
-def parse_tree(rootpath):
+def parse_tree(rootpath, milestonesonly=False):
     """
 
     >>> import shutil, os
@@ -404,13 +404,14 @@ def parse_tree(rootpath):
             
     all_todos = sorted(all_todos, key=lambda t: t.priority, reverse=True)
     all_miles = sorted(all_miles, key=lambda t: t.priority, reverse=True)
+    
     for todo in all_todos:
         textfrag += "{0} [{1} ({2})]\n".format(todo.txt, todo.filepath, todo.linenum)
         htmlfrag += "<tr><td>%s</td> <td>%s</td> <td>%s</td> </tr>\n" % (
             todo.txt,
             todo.filepath,
             todo.linenum,
-        )
+               )
     htmlfrag += "</table>"
 
     for mile in all_miles:
@@ -428,7 +429,8 @@ def parse_tree(rootpath):
     open(path, "w").write(htmlfrag)
     # import webbrowser
     # webbrowser.open(path)
-    print(textfrag)
+    if not milestonesonly:
+        print(textfrag)
     print(miles_text_frag)
 
 
