@@ -1,6 +1,6 @@
 #! -*- coding:utf-8 -*-
 
-'''There is a story I like about PG Wodehouse, author of the Jeeves
+"""There is a story I like about PG Wodehouse, author of the Jeeves
 and Wooster novels.  He had an unusual method of editing his own work.
 He would write (long hand) a page of his new book.  And read it, and
 place the page on the wall of his study, and start on the next page.
@@ -85,15 +85,12 @@ but we can alter that priority by putting a {val} after the text
 
 Future enhancements:
 
-* "TODO-feature: "
-* have a store of todos in .todoinator in the current repo, 
-  which lets us compute what has changed ?
+{x} Create a Milestone approach as wella s todo
+{ } how to integrate with some ticket tracker?
+{ } how to show in webbroswer in docker
 
 
-
-[ ]: build a test framework / runner
-
-'''
+"""
 
 # rate: **
 # life: prototype
@@ -103,18 +100,16 @@ import os
 import re
 import logging
 
-VALID_SUFFIX = ['.py', '.rst', '.txt']
+VALID_SUFFIX = [".py", ".rst", ".txt"]
 ### config
-confd = {'todoinator.priorityregex': "\{\d+\}"} 
+confd = {"todoinator.priorityregex": "\{\d+\}"}
+
 
 class TODO(object):
     """
     """
-    def __init__(self,
-                 isDone,
-                 todotxt,
-                 linenum,
-                 filepath):
+
+    def __init__(self, isDone, todotxt, linenum, filepath):
         """
         """
         self.isDone = isDone
@@ -124,20 +119,21 @@ class TODO(object):
 
         self.linenum = linenum
         self.line = self.linenum
-        
+
         self.filepath = filepath
         # [ ] Need to think of something re: priority
-        self.priority = 1 
+        self.priority = 1
         try:
             absfilepath = os.path.abspath(filepath)
             bits = absfilepath.split("/")
-            idx = bits.index("projects") #assume thats there
-            self.reponame = bits[idx+1]
-        except ValueError: # cant find projects in path
-            self.reponame = '?'
+            idx = bits.index("projects")  # assume thats there
+            self.reponame = bits[idx + 1]
+        except ValueError:  # cant find projects in path
+            self.reponame = "?"
 
     def __repr__(self):
         return "[{}] {}".format("x" if self.isDone else " ", self.todotxt)
+
 
 def keep_file(filepath):
     """Decide if we keep the filepath, solely by exlcusion of end of path
@@ -148,21 +144,22 @@ def keep_file(filepath):
     False
 
     """
-    ignoredpathendings = ['.pyc',]
+    ignoredpathendings = [".pyc"]
     for ending in ignoredpathendings:
         if filepath.endswith(ending):
             return False
     return True
 
+
 def walk_tree(rootpath):
     """
     """
-    ignoredirs = ['.git',]
+    ignoredirs = [".git"]
 
     for dirpath, dirs, files in os.walk(rootpath):
-        #change dirs to remove unwanted dirs to descend into
-        #rememer we need to use .remove as dirs seems to just point at
-        #underlying implementation, so substitution has no effect
+        # change dirs to remove unwanted dirs to descend into
+        # rememer we need to use .remove as dirs seems to just point at
+        # underlying implementation, so substitution has no effect
         for d in ignoredirs:
             if d in dirs:
                 dirs.remove(d)
@@ -171,6 +168,7 @@ def walk_tree(rootpath):
         for file in files:
             thisfile = os.path.join(dirpath, file)
             yield thisfile
+
 
 def linenumber_lookup(linenumbers, filepos):
     """
@@ -183,19 +181,19 @@ def linenumber_lookup(linenumbers, filepos):
     -1
 
     """
-#    print("looking up", linenumbers, filepos)
+    #    print("looking up", linenumbers, filepos)
     foundlinenumber = -1
     for idx, linestartpos in enumerate(linenumbers):
-        #[ ] handle last idx pos better here
+        # [ ] handle last idx pos better here
         try:
-            if filepos >= linestartpos and filepos <= linenumbers[idx+1]:
-                foundlinenumber = idx+1
+            if filepos >= linestartpos and filepos <= linenumbers[idx + 1]:
+                foundlinenumber = idx + 1
         except IndexError as e:
             if filepos <= linestartpos:
                 foundlinenumber = idx
             else:
                 foundlinenumber = -1
-                
+
     return foundlinenumber
 
 
@@ -214,33 +212,34 @@ def linenumber_creator(txt):
     """
     linenumbers = []
     for idx, val in enumerate(txt):
-        if val == '\n':
+        if val == "\n":
             linenumbers.append(idx)
     if linenumbers and linenumbers[0] != 0:
-        linenumbers.insert(0,0)
+        linenumbers.insert(0, 0)
     return linenumbers
+
 
 def base_file_parse(txt, filepath, regex, isMileStone=False):
     """
     """
     if isMileStone:
-        DONETOKEN = '{x}'
-        RHS = '}'
+        DONETOKEN = "{x}"
+        RHS = "}"
     else:
-        DONETOKEN = '[x]'
-        RHS = ']'
+        DONETOKEN = "[x]"
+        RHS = "]"
     todos = []
     linenumbers = linenumber_creator(txt)
-    
-    #StartLine:ZeroMoreSpaces:ZeroMoreHash:ZeroMoreSpaces:box
-    REGEX = regex 
-    flag = re.MULTILINE|re.IGNORECASE|re.UNICODE
+
+    # StartLine:ZeroMoreSpaces:ZeroMoreHash:ZeroMoreSpaces:box
+    REGEX = regex
+    flag = re.MULTILINE | re.IGNORECASE | re.UNICODE
     pattern = re.compile(REGEX, flags=flag)
 
-    #matchiter = re.finditer(REGEX, txt, flags=flag)
+    # matchiter = re.finditer(REGEX, txt, flags=flag)
     matchiter = pattern.finditer(txt)
     for match in matchiter:
-        goodline = match.groups()[0] # we wont match twice on same line??
+        goodline = match.groups()[0]  # we wont match twice on same line??
         done = False
         if DONETOKEN in goodline.lower():
             done = True
@@ -248,7 +247,8 @@ def base_file_parse(txt, filepath, regex, isMileStone=False):
         _start = match.start()
         linenum = linenumber_lookup(linenumbers, _start)
         todos.append(TODO(done, todo_txt, linenum, filepath))
-    return(todos)
+    return todos
+
 
 def parse_file_miles(txt, filepath):
     """ Extract milestone lines from a file
@@ -271,9 +271,10 @@ def parse_file_miles(txt, filepath):
     True 6
 
     """
-    regex = '''^\s*\#*\s*(\{[\s|x]\}.*)'''
+    regex = """^\s*\#*\s*(\{[\s|x]\}.*)"""
     return base_file_parse(txt, filepath, regex, isMileStone=True)
-    
+
+
 def parse_file_todos(txt, filepath):
     """Extract todo lines from a file
 
@@ -315,8 +316,9 @@ def parse_file_todos(txt, filepath):
 
 
     """
-    regex = '''^\s*\#*\s*(\[[\s|x]\].*)'''
+    regex = """^\s*\#*\s*(\[[\s|x]\].*)"""
     return base_file_parse(txt, filepath, regex, isMileStone=False)
+
 
 def parse_line(todoline):
     """extract data from a todo line
@@ -330,15 +332,15 @@ def parse_line(todoline):
 
     
     """
-    rgx = re.compile(confd['todoinator.priorityregex'])
-    vals = rgx.findall(todoline) # returns [] or ['{4}']    
+    rgx = re.compile(confd["todoinator.priorityregex"])
+    vals = rgx.findall(todoline)  # returns [] or ['{4}']
     if vals:
         token = sorted(vals)[-1]
         priority = int(token.replace("{", "").replace("}", ""))
     else:
-        token = ''
+        token = ""
         priority = 30
-    return todoline.replace(token, ''), priority
+    return todoline.replace(token, ""), priority
 
 
 def parse_tree(rootpath):
@@ -352,21 +354,28 @@ def parse_tree(rootpath):
     >>> txt = '''Hello
     ... [ ] Correct Todo item
     ... [x] DOne this
+    ... { } Milestone item
     ... THis is just a line'''
     >>> print(len(txt))
-    61
+    80
     >>> open(tgtfile, 'w').write(txt)
-    61
+    80
     >>> parse_tree(rootpath)
     TODO
     Correct Todo item [/tmp/todoinatortest/foo.txt (2)]
     DOne this [/tmp/todoinatortest/foo.txt (3)]
     <BLANKLINE>
+    Milestones
+    Milestone item [/tmp/todoinatortest/foo.txt (4)]
+    <BLANKLINE>
 
     """
     all_todos = []
+    all_miles = []
     textfrag = "TODO\n"
     htmlfrag = "<table>"
+    miles_text_frag = 'Milestones\n'
+    miles_html_frag = '<table>'
     
     for filepath in walk_tree(rootpath):
         # test if suffix valid (ie dont parse pyc or wheel)
@@ -374,36 +383,56 @@ def parse_tree(rootpath):
         if suffix not in VALID_SUFFIX:
             continue
         try:
-            #assume all files are utf-8???
-            todo_list = parse_file_todos(open(filepath, encoding='utf-8').read(), filepath)
-            # [ ] We need a better sorting of todos across many files? Revert to priority???
-            res = sorted(todo_list, key=lambda t: t.filepath)
+            # assume all files are utf-8???
+            todo_list = parse_file_todos(
+                open(filepath, encoding="utf-8").read(), filepath
+            )
+            milestone_list = parse_file_miles(
+                open(filepath, encoding="utf-8").read(), filepath
+            )
+            todos = sorted(todo_list, key=lambda t: t.filepath)
+            miles = sorted(milestone_list, key=lambda t: t.filepath)
         except IOError:
-            res = []
+            todos = []
+            miles = []
         except UnicodeDecodeError as e:
-            logging.error("could not read %s - unicode err",filepath)
+            logging.error("could not read %s - unicode err", filepath)
+        if todos:
+            all_todos.extend(todos)
+        if miles:
+            all_miles.extend(miles)
             
-        if res:
-            all_todos.extend(res)
-
     all_todos = sorted(all_todos, key=lambda t: t.priority, reverse=True)
+    all_miles = sorted(all_miles, key=lambda t: t.priority, reverse=True)
     for todo in all_todos:
-        textfrag += "{0} [{1} ({2})]\n".format(todo.txt,
-                                             todo.filepath,
-                                             todo.linenum)
-        htmlfrag += "<tr><td>%s</td> <td>%s</td> <td>%s</td> </tr>\n" %  (todo.txt,
-                                                                          todo.filepath,
-                                                                          todo.linenum)
+        textfrag += "{0} [{1} ({2})]\n".format(todo.txt, todo.filepath, todo.linenum)
+        htmlfrag += "<tr><td>%s</td> <td>%s</td> <td>%s</td> </tr>\n" % (
+            todo.txt,
+            todo.filepath,
+            todo.linenum,
+        )
+    htmlfrag += "</table>"
+
+    for mile in all_miles:
+        miles_text_frag += "{0} [{1} ({2})]\n".format(mile.txt,
+                                                      mile.filepath,
+                                                      mile.linenum)
+        miles_html_frag += "<tr><td>%s</td> <td>%s</td> <td>%s</td> </tr>\n" % (
+            mile.txt,
+            mile.filepath,
+            mile.linenum,
+        )
     htmlfrag += "</table>"
     #######################
     path = "/tmp/todo.html"
-    open(path, 'w').write(htmlfrag)
-    import webbrowser
-    webbrowser.open(path)
+    open(path, "w").write(htmlfrag)
+    # import webbrowser
+    # webbrowser.open(path)
     print(textfrag)
+    print(miles_text_frag)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import doctest
+
     doctest.testmod(verbose=False)
- 
